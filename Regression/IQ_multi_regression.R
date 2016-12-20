@@ -1,0 +1,5 @@
+intelligent_scores <- read.table("/home/thayhuynh/personal/R/Regression/IO_multi_regression.data", header = TRUE)
+attach(intelligent_scores)
+multi_regression_model <- lm(PIQ ~ Brain + Height + Weight)
+summary(multi_regression_model)
+anova(multi_regression_model)
