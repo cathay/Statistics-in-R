@@ -1,5 +1,10 @@
 intelligent_scores <- read.table("/home/thayhuynh/personal/R/Regression/IO_multi_regression.data", header = TRUE)
 attach(intelligent_scores)
-multi_regression_model <- lm(PIQ ~ Brain + Height + Weight)
+multi_regression_model <- lm(PIQ ~ Brain + Height)
 summary(multi_regression_model)
 anova(multi_regression_model)
+newData <- data.frame(Brain=90, Height=70)
+# Calculate CI for mean response
+predict.lm(multi_regression_model,newdata = newData, interval="confidence")
+mean(Brain)
+mean(Height)
