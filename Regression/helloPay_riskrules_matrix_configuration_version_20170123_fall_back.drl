@@ -1,0 +1,244 @@
+//    Risk Rules Configuration for helloPay
+// #*****************************************************************************#
+// #  helloPay Template for Configuration Files
+// #  Program Name         : Risk Rules Configuration for helloPay
+// #  Language/Shell       : Configuration file for Guvnor
+// #  Description          : The purpose of this configuration is to
+// #                         1. Configure helloPay rules in system using Guvnor
+// #  Parameters           : N/A
+// #  Returns              : N/A
+// #  Called
+// #  scripts/programs     : N/A
+// #  Called from
+// #  scripts/programs     :
+// #  Execute Mode         : Batch
+// #  Author.              : Sajith Kumar (helloPay)
+// #  Credits              : Michel C., Dong Phan (Review, Corrections and Optimization)
+// #  Date written         : 14-April-2015
+// #  Modification history:
+// #  Description of change                       Date            Modified by
+// #  ---------------------                      -------          -----------
+// #  Comment off 2FA and on Hold behavior;      12.05.15         Sajith Kumar          
+// #  for time being reject transactions
+// #  which are of high risk and have no 3DS
+// #
+// #
+// #*****************************************************************************#
+
+package paybuddy
+import com.trimplement.wallet.server.paybuddy.api.riskmonitor.dom.RiskRuleData
+import com.trimplement.wallet.server.paybuddy.api.riskmonitor.dom.RiskVerificationOutputAction
+import com.trimplement.wallet.server.paybuddy.api.riskmonitor.dom.RiskManagementVerificationType
+import com.trimplement.wallet.server.paybuddy.api.riskmonitor.dom.RiskVerificationKYCLevel
+import com.trimplement.wallet.server.paybuddy.api.riskmonitor.dom.RiskVerificationWalletType
+import com.trimplement.wallet.server.paybuddy.api.riskmonitor.dom.RiskVerificationFundingSource
+import com.trimplement.wallet.server.paybuddy.api.riskmonitor.dom.RiskReviewStatus
+
+
+// -----------------------------------------------------------------------------------------------------------------------------
+// Default Values to be used in configuration
+
+// The configuration below provides the list of parameter metrics to be used during rules configuration
+// The rules are read from end of file, and executed bottom to top
+
+// KYC level value
+// KYCLevel=RiskVerificationKYCLevel.NOACTION
+// KYCLevel=RiskVerificationKYCLevel.UNVERIFIED
+// KYCLevel=RiskVerificationKYCLevel.BASIC_WITHDRAWAL
+// KYCLevel=RiskVerificationKYCLevel.PREMIUM
+// KYCLevel=RiskVerificationKYCLevel.PREMIUM_WITHDRAWAL
+// KYCLevel=RiskVerificationKYCLevel.UNKNOWN
+//
+// Wallet Type
+// walletType=RiskVerificationWalletType.FULL
+// walletType=RiskVerificationWalletType.GUEST
+// walletType=RiskVerificationWalletType.UNKNOWN
+//
+// Funding Source
+// fundingSource= RiskVerificationFundingSource.CryptoWallet
+// fundingSource= RiskVerificationFundingSource.BankAccount
+// fundingSource= RiskVerificationFundingSource.CreditCard
+// fundingSource= RiskVerificationFundingSource.ExternalAccount
+// fundingSource= RiskVerificationFundingSource.Unknown
+//
+// TMX review status
+// riskResult= RiskReviewStatus.Reject
+// riskResult= RiskReviewStatus.Review
+// riskResult= RiskReviewStatus.Pass
+//
+// Checkpoint
+// checkPoint = RiskManagementVerificationType.UserRegistration
+// checkPoint = RiskManagementVerificationType.UserBeforeLogin
+// checkPoint = RiskManagementVerificationType.UserBaseDataChange
+// checkPoint = RiskManagementVerificationType.FundingCompleted
+// checkPoint = RiskManagementVerificationType.PurchasePrepareConfirm
+// checkPoint = RiskManagementVerificationType.WalletCreated
+// checkPoint = RiskManagementVerificationType.FundingConfirm
+//
+// Output Action
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.Accepted)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.OnHold)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.Decline)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.Trigger2FA)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.LockBuyerAccount)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.RestrictPurchase)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.RestrictWithdraw)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.Trigger3DS)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.LockSellerAccount)
+// $riskRuleData.addOutputAction(RiskVerificationOutputAction.NoAction)
+
+// -----------------------------------------------------------------------------------------------------------------------------
+
+// If TMX gives reject status and Funding Source is one where helloPay has liability and
+// card has no 3DS enrollment and we have no capability for 2FA, then decline the transaction
+
+rule "Rule 13: TMX_Review_Status==Reject"
+	salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(riskResult == RiskReviewStatus.Reject)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Decline);
+end
+
+// If TMX gives review statyus and Funding Source is one where helloPay has liability and
+// card has no 3DS enrollment and we have no capability for 2FA, then decline the transaction
+// Liability for this is with helloPay - We decline transaction
+
+rule "Rule 12: TMX_Review_Status==Review"
+    salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(riskResult == RiskReviewStatus.Review)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Trigger3DS);
+end
+
+// If Funding Source is one where helloPay has liability and card has no 3DS enrollment, we try 2FA
+// We dont have 2FA available, this rule needs to be commented off
+//rule "Rule 11: 2FA ==Yes"
+//    salience 10
+//    activation-group "default_matrix"
+//    when
+//          $riskRuleData : RiskRuleData(enrolment2FA =="true")
+//    then
+//          $riskRuleData.addOutputAction(RiskVerificationOutputAction.Trigger2FA);
+//end
+
+// If Funding Source is one where helloPay has liability and 3DS enrollment is available, just trigger 3DS
+// A successful 3DS where cardholder is either enrolled or enrolls through activation during shopping
+// Liability Shifts to Issuer for Visa and Mastercard Cards
+//rule "Rule 10: enrolment Card3DS == Yes"
+//    salience 10
+//    activation-group "default_matrix"
+//    when
+//        $riskRuleData : RiskRuleData(enrolment3DS == "true")
+//    then
+//        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Trigger3DS);
+//end
+
+// If Funding Source is credit card and risk review status is pending from Alipay RaaS, then trigger OnHold state
+rule "Rule 10: fundingSource == CreditCard And riskResult= RiskReviewStatus.Pending"
+  salience 10
+  activation-group "default_matrix"
+ when
+        $riskRuleData : RiskRuleData(fundingSource == RiskVerificationFundingSource.CreditCard,riskResult == RiskReviewStatus.Pending)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Trigger3DS);
+end
+
+// If Funding Source is one where helloPay has no liability, then just accept it
+rule "Rule 9: fundingSource != CreditCard"
+  salience 10
+  activation-group "default_matrix"
+ when
+        $riskRuleData : RiskRuleData(fundingSource != RiskVerificationFundingSource.CreditCard)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Accepted);
+end
+
+// User Base Data Change | Existing User & TMX_Review_Status==Reject
+rule "Rule 8: TMX_Review_Status == Reject And checkPoint == UserBaseDataChange"
+     salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(checkPoint == RiskManagementVerificationType.UserBaseDataChange,riskResult == RiskReviewStatus.Reject)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Decline);
+end
+
+// If existing user is rejected by DM(It means that the event happen after user log in). He/she will not be allowed to get access to the system.
+// User after login | New User & TMX_Review_Status==Reject
+rule "Rule 7: TMX_Review_Status == Reject And checkPoint == UserAfterLogin"
+     salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(checkPoint == RiskManagementVerificationType.UserAfterLogin,riskResult == RiskReviewStatus.Reject)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Decline);
+end
+
+// User Registration | New User & TMX_Review_Status==Reject
+rule "Rule 6: TMX_Review_Status == Reject And checkPoint == UserBeforeLogin"
+     salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(checkPoint == RiskManagementVerificationType.UserBeforeLogin,riskResult == RiskReviewStatus.Reject)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Decline);
+end
+
+// User Registration | New User & TMX_Review_Status==Reject
+rule "Rule 5: TMX_Review_Status==Reject And checkPoint == UserRegistration"
+    salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(checkPoint == RiskManagementVerificationType.UserRegistration,riskResult == RiskReviewStatus.Reject)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Decline);
+end
+
+
+// User Base Data Change | Existing User & TMX_Review_Status==Review >> Set to Noaction to check if is case of account takeover -
+//                                                                      Customer provides additional data for premium account
+rule "Rule 4: TMX_Review_Status==Review And checkPoint == UserBaseDataChange"
+    salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(checkPoint == RiskManagementVerificationType.UserBaseDataChange,riskResult == RiskReviewStatus.Review)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.NoAction);
+end
+
+// User Registration | New User & TMX_Review_Status==Review
+rule "Rule 3: TMX_Review_Status==Review And checkPoint == UserBeforeLogin"
+     salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(checkPoint == RiskManagementVerificationType.UserBeforeLogin,riskResult == RiskReviewStatus.Review)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Accepted);
+end
+
+// User Registration | New User & TMX_Review_Status==Review
+rule "Rule 2: TMX_Review_Status==Review And checkPoint == UserRegistration"
+    salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(checkPoint == RiskManagementVerificationType.UserRegistration,riskResult == RiskReviewStatus.Review)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Accepted);
+end
+
+// If TMX Review Status is Pass, then Accept the transaction as it is a low risk transaction
+rule "Rule 1: TMX_Review_Status == Pass"
+    salience 10
+    activation-group "default_matrix"
+    when
+        $riskRuleData : RiskRuleData(riskResult == RiskReviewStatus.Pass)
+    then
+        $riskRuleData.addOutputAction(RiskVerificationOutputAction.Accepted);
+end
+
+// -----------------------------------------------------------------------------------------------------------------------------
+// End Configuration

@@ -6,5 +6,6 @@ anova(multi_regression_model)
 newData <- data.frame(Brain=90, Height=70)
 # Calculate CI for mean response
 predict.lm(multi_regression_model,newdata = newData, interval="confidence")
+predict.lm(multi_regression_model,newdata = newData, interval="prediction")
 mean(Brain)
 mean(Height)
