@@ -1,3 +1,4 @@
+library(MASS)
 rawData <-  read.table(paste(getwd(),"/birthsmoker.data",sep = ""), header = TRUE, stringsAsFactors=FALSE)
 
 # Transform catogirical variables to numeric
@@ -9,6 +10,7 @@ Smoke
 
 model <- lm(Wgt ~ Smoke + Gest)
 summary(model)
+boxcox(model)
 
 #Calculate CI for Smoke -> 
 # We can be 95% confident that the mean birth weight of smoking mothers is between 158.7 and 330.4 grams less than 
